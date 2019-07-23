@@ -14,13 +14,14 @@ import (
 // io.Pipe except there are no PipeReader/PipeWriter halves, and the
 // underlying buffer is an interface. (io.Pipe is always unbuffered)
 type pipe struct {
-	mu       sync.Mutex
-	c        sync.Cond     // c.L lazily initialized to &p.mu
-	b        pipeBuffer    // nil when done reading
-	err      error         // read error once empty. non-nil means closed.
-	breakErr error         // immediate read error (caller doesn't see rest of b)
-	donec    chan struct{} // closed on error
-	readFn   func()        // optional code to run in Read before error
+	mu        sync.Mutex
+	c         sync.Cond     // c.L lazily initialized to &p.mu
+	b         pipeBuffer    // nil when done reading
+	unusedLen int           // contains the unused if b is closed with BreakWithError
+	err       error         // read error once empty. non-nil means closed.
+	breakErr  error         // immediate read error (caller doesn't see rest of b)
+	donec     chan struct{} // closed on error
+	readFn    func()        // optional code to run in Read before error
 }
 
 type pipeBuffer interface {
@@ -29,11 +30,11 @@ type pipeBuffer interface {
 	io.Reader
 }
 
-func (p *pipe) Len() int {
+func (p *pipe) UnusedLen() int {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.b == nil {
-		return 0
+		return p.unusedLen
 	}
 	return p.b.Len()
 }
@@ -117,6 +118,9 @@ func (p *pipe) closeWithError(dst *error, err error, fn func()) {
 	}
 	p.readFn = fn
 	if dst == &p.breakErr {
+		if p.b != nil {
+			p.unusedLen = p.b.Len()
+		}
 		p.b = nil
 	}
 	*dst = err

@@ -1992,7 +1992,7 @@ func (b transportResponseBody) Read(p []byte) (n int, err error) {
 		// Consider any buffered body data (read from the conn but not
 		// consumed by the client) when computing flow control for this
 		// stream.
-		v := int(cs.inflow.available()) + cs.bufPipe.Len()
+		v := int(cs.inflow.available()) + cs.bufPipe.UnusedLen()
 		if v < transportDefaultStreamFlow-transportDefaultStreamMinRefresh {
 			streamAdd = int32(transportDefaultStreamFlow - v)
 			cs.inflow.add(streamAdd)
@@ -2019,7 +2019,7 @@ func (b transportResponseBody) Close() error {
 	cc := cs.cc
 
 	serverSentStreamEnd := cs.bufPipe.Err() == io.EOF
-	unread := cs.bufPipe.Len()
+	unread := cs.bufPipe.UnusedLen()
 
 	if unread > 0 || !serverSentStreamEnd {
 		cc.mu.Lock()

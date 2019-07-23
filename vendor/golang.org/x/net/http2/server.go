@@ -1504,9 +1504,9 @@ func (sc *serverConn) closeStream(st *stream, err error) {
 	if p := st.body; p != nil {
 		// Return any buffered unread bytes worth of conn-level flow control.
 		// See golang.org/issue/16481
-		sc.sendWindowUpdate(nil, p.Len())
+		sc.sendWindowUpdate(nil, p.UnusedLen())
 
-		p.CloseWithError(err)
+		p.BreakWithError(err)
 	}
 	st.cw.Close() // signals Handler's CloseNotifier, unblocks writes, etc
 	sc.writeSched.CloseStream(st.id)
