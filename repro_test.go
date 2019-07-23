@@ -23,6 +23,9 @@ func testServerHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 	switch r.URL.Path {
 	case "/drop":
+		// The repro fails a lot faster if we read a few bytes of the body.
+		r.Body.Read(make([]byte, 4))
+
 		// Close the body to trigger https://github.com/golang/go/issues/28634
 		err = r.Body.Close()
 	default:
