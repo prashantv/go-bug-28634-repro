@@ -16,6 +16,9 @@ import (
 	"golang.org/x/net/http2/h2c"
 )
 
+// We want a large request body to consume the connection flow control window.
+var largePayload = strings.Repeat("ABCDEFGH", 1024*1024)
+
 // Handler supports 2 functions:
 // drop: reads a few bytes from the body, then closes the request body
 // echo: echoes the request body
@@ -50,11 +53,8 @@ func TestSendLargeUnreadPayload(t *testing.T) {
 	defer server.Close()
 	go server.Serve(ln)
 
-	// We want a large request body to consume the connection flow control window.
-	var largePayload = strings.Repeat("ABCDEFGH", 1024*1024)
-
 	client := newHTTP2Client()
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 1000; i++ {
 		t.Logf("Running iteration %v", i)
 
 		// First, make a large payload requests which will not be fully read
