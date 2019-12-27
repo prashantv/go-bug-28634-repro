@@ -49,10 +49,14 @@ func (s *State) Generate() error {
 		return err
 	}
 	if !isDir {
-		gopath := build.Default.GOPATH
-		path = filepath.Join(gopath, filepath.FromSlash(pkgs[0].Pkg.Path()))
+		gopath := filepath.SplitList(build.Default.GOPATH)[0]
+		path = filepath.Join(gopath, "src", filepath.FromSlash(pkgs[0].Pkg.Path()))
 	}
-	path = filepath.Join(path, s.Config.GenFile)
+	if filepath.IsAbs(s.Config.GenFile) {
+		path = s.Config.GenFile
+	} else {
+		path = filepath.Join(path, s.Config.GenFile)
+	}
 	cw.WriteGoFile(path, pkg) // TODO: WriteGoFile should return error.
 	return err
 }
@@ -267,8 +271,11 @@ func assembleSelect(m *Message, s *Select) (msg catmsg.Message, err error) {
 func sortCases(cases []string) {
 	// TODO: implement full interface.
 	sort.Slice(cases, func(i, j int) bool {
-		if cases[j] == "other" && cases[i] != "other" {
+		switch {
+		case cases[i] != "other" && cases[j] == "other":
 			return true
+		case cases[i] == "other" && cases[j] != "other":
+			return false
 		}
 		// the following code relies on '<' < '=' < any letter.
 		return cmpNumeric(cases[i], cases[j]) == -1
